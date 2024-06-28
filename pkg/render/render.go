@@ -1,53 +1,74 @@
 package render
 
 import (
-	"fmt"
+	"bytes"
+	"github.com/mziyadabek/bookings/pkg/config"
 	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
 )
 
-func RenderTemplateTest(w http.ResponseWriter, templ string) {
-	parsedTemplate, _ := template.ParseFiles("./templates/" + templ)
-	err := parsedTemplate.Execute(w, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+var function = template.FuncMap{}
+var app *config.AppConfig
+
+func NewTemplate(a *config.AppConfig) {
+	app = a
 }
 
-var tc = make(map[string]*template.Template)
-
-func RenderTemplatest(w http.ResponseWriter, t string) {
-	var tmpl *template.Template
-	var err error
-	_, inMap := tc[t]
-	if !inMap {
-		log.Println("creating templ and ding to cache")
-		err = crateTemplateCache(t)
-		if err != nil {
-			log.Println(err)
-		}
+func RenderTemplatest(w http.ResponseWriter, templ string) {
+	var tc map[string]*template.Template
+	if app.UseCache {
+		tc = app.TemplateCache
 	} else {
-		log.Println("using cached template")
-	}
-	tmpl = tc[t]
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		log.Println(err)
+		tc, _ = CreateTemplateCache()
 	}
 
+	t, ok := tc[templ]
+	if !ok {
+		log.Fatal("err")
+	}
+
+	buf := new(bytes.Buffer)
+
+	err := t.Execute(buf, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = buf.WriteTo(w)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func crateTemplateCache(t string) error {
-	templat := []string{
-		fmt.Sprintf("./templates/%s", t),
-	}
-	tmpl, err := template.ParseFiles(templat...)
+func CreateTemplateCache() (map[string]*template.Template, error) {
+	myCache := map[string]*template.Template{}
 
+	pages, err := filepath.Glob("./templates/*.html")
 	if err != nil {
-		return err
+		return myCache, err
 	}
-	tc[t] = tmpl
-	return nil
+	for _, page := range pages {
+		name := filepath.Base(page)
+		ts, err := template.New(name).ParseFiles(page)
+		if err != nil {
+			return myCache, err
+		}
+
+		matches, err := filepath.Glob("./template/*.html")
+		if err != nil {
+			return myCache, err
+		}
+		if len(matches) > 0 {
+			ts, err = ts.ParseGlob("./template/*.html")
+			if err != nil {
+				return myCache, err
+			}
+		}
+
+		myCache[name] = ts
+	}
+	return myCache, nil
+
 }
