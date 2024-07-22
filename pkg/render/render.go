@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"github.com/mziyadabek/bookings/pkg/config"
+	"github.com/mziyadabek/bookings/pkg/models"
 	"html/template"
 	"log"
 	"net/http"
@@ -16,7 +17,11 @@ func NewTemplate(a *config.AppConfig) {
 	app = a
 }
 
-func RenderTemplatest(w http.ResponseWriter, templ string) {
+func AddDefaultData(td *models.TemplateData) *models.TemplateData {
+	return td
+}
+
+func RenderTemplatest(w http.ResponseWriter, templ string, td *models.TemplateData) {
 	var tc map[string]*template.Template
 	if app.UseCache {
 		tc = app.TemplateCache
@@ -30,8 +35,8 @@ func RenderTemplatest(w http.ResponseWriter, templ string) {
 	}
 
 	buf := new(bytes.Buffer)
-
-	err := t.Execute(buf, nil)
+	td = AddDefaultData(td)
+	err := t.Execute(buf, td)
 	if err != nil {
 		log.Fatal(err)
 	}

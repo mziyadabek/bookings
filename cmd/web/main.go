@@ -22,7 +22,15 @@ func main() {
 	handlers.NewHandlers(repo)
 
 	render.NewTemplate(&app)
-	http.HandleFunc("/", handlers.Repo.Home)
-	http.HandleFunc("/about", handlers.Repo.About)
-	_ = http.ListenAndServe(PortNum, nil)
+	//http.HandleFunc("/", handlers.Repo.Home)
+	//http.HandleFunc("/about", handlers.Repo.About)
+	//_ = http.ListenAndServe(PortNum, nil)
+
+	srv := &http.Server{
+		Addr:    PortNum,
+		Handler: routes(&app),
+	}
+
+	err = srv.ListenAndServe()
+	log.Println(err)
 }
